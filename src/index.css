@@ -1,0 +1,12 @@
+@import "flatpickr/dist/flatpickr.min.css";
+@import "flatpickr/dist/themes/airbnb.css";  /* 원하는 테마로 바꿔도 됨 */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* Flatpickr 기본 테마 (맘에 드는 걸로 변경 가능: airbnb, material_blue 등) */
+@import "flatpickr/dist/themes/airbnb.css";
+
+/* 상태 색상 */
+.flatpickr-day.blocked { background:#fee2e2; border:1px solid #fca5a5; }
+.flatpickr-day.wanted  { background:#dcfce7; border:1px solid #86efac; }
