@@ -1,9 +1,10 @@
-import { doc, setDoc, getDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 import React, { useMemo, useState, useEffect } from "react";
 import Flatpickr from "react-flatpickr";
-import ko from "flatpickr/dist/l10n/ko.js"; // 한국어 달력
+import ko from "flatpickr/dist/l10n/ko.js";
+
 import { db, ensureAnonAuth } from "./firebase";
-import { doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
+
 
 
 // ---- 미니 UI ----
