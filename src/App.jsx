@@ -1,8 +1,10 @@
+import { doc, setDoc, getDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 import React, { useMemo, useState, useEffect } from "react";
 import Flatpickr from "react-flatpickr";
 import ko from "flatpickr/dist/l10n/ko.js"; // 한국어 달력
 import { db, ensureAnonAuth } from "./firebase";
 import { doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
+
 
 // ---- 미니 UI ----
 function cls(...a){return a.filter(Boolean).join(" ")}
@@ -85,47 +87,61 @@ export default function AppointmentPlanner(){
   }
 
   // 방 생성 & 실시간 구독 (한 번만)
-  useEffect(() => {
-    let unsub = null;
-    (async () => {
-      try {
-        await ensureAnonAuth();
+useEffect(() => {
+  let unsub = null;
+  (async () => {
+    try {
+      await ensureAnonAuth();
 
-        // URL room 파라미터 확보 (없으면 생성해서 붙임)
-        let rid = new URL(window.location.href).searchParams.get("room");
-        if (!rid) {
-          rid = Math.random().toString(36).slice(2, 10);
-          const url = new URL(window.location.href);
-          url.searchParams.set("room", rid);
-          window.history.replaceState(null, "", url.toString());
-        }
-        setRoomId(rid);
+      // room 파라미터 확보 (없으면 생성해 URL에 붙임)
+      let rid = new URL(window.location.href).searchParams.get("room");
+      if (!rid) {
+        rid = Math.random().toString(36).slice(2, 10);
+        const url = new URL(window.location.href);
+        url.searchParams.set("room", rid);
+        window.history.replaceState(null, "", url.toString());
+      }
+      setRoomId(rid);
 
-        const ref = doc(db, "rooms", rid);
+      const ref = doc(db, "rooms", rid);
 
-        // 문서 초기 생성/병합
-        await setDoc(ref, {
-          range: { start: range.start, end: range.end },
-          people,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
+      // 🔴 여기! 문서가 없을 때만 초기 세팅
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        await setDoc(
+          ref,
+          {
+            range: { start: range.start, end: range.end },
+            people,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
 
-        // 실시간 구독
-        unsub = onSnapshot(ref, (snap) => {
-          if (!snap.exists()) return;
-          const d = snap.data();
+      // 실시간 구독 (기존 데이터 그대로 불러옴)
+      unsub = onSnapshot(
+        ref,
+        (docSnap) => {
+          if (!docSnap.exists()) return;
+          const d = docSnap.data();
           if (d.range) setRange(d.range);
           if (d.people) setPeople(d.people);
           setIsReady(true);
-        }, (err) => console.error("onSnapshot error:", err));
-      } catch (e) {
-        console.error("init error:", e);
-      }
-    })();
-    return () => { if (unsub) unsub(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+        },
+        (err) => console.error("onSnapshot error:", err)
+      );
+    } catch (e) {
+      console.error("init error:", e);
+    }
+  })();
+  return () => {
+    if (unsub) unsub();
+  };
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
 
   // --- 이름 선택 UI (처음엔 이름만, 선택한 사람만 열기)
   const [activeId,setActiveId]=useState(1);
