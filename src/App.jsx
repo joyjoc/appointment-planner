@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useEffect } from "react";
 import Flatpickr from "react-flatpickr";
-import ko from "flatpickr/dist/l10n/ko.js"; // 한국어 요일/월 표시
-
+import ko from "flatpickr/dist/l10n/ko.js"; // 한국어 달력
+import { db, ensureAnonAuth } from "./firebase";
+import { doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 
 // ---- 미니 UI ----
 function cls(...a){return a.filter(Boolean).join(" ")}
@@ -22,13 +23,11 @@ const Button = ({children, className="", ...rest}) => (
 // ---- 유틸 ----
 function dateKey(d) {
   if (typeof d === "string") return d.trim();
-  const y = d.getFullYear(); const m = String(d.getMonth()+1).padStart(2,"0"); const day = String(d.getDate()).padStart(2,"0");
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
   return `${y}-${m}-${day}`;
 }
 function parseDateList(text) {
-  return new Set(
-    text.split(/[\n,\s]+/).map(s=>s.trim()).filter(s=>/^\d{4}-\d{2}-\d{2}$/.test(s))
-  );
+  return new Set(text.split(/[\n,\s]+/).map(s=>s.trim()).filter(s=>/^\d{4}-\d{2}-\d{2}$/.test(s)));
 }
 function enumerateDates(startStr, endStr) {
   const out=[]; const s=new Date(startStr); const e=new Date(endStr);
@@ -52,6 +51,7 @@ const NAME_COLORS = [
 ];
 
 export default function AppointmentPlanner(){
+  // 기본 기간
   const today=new Date(); const in30=new Date(); in30.setDate(today.getDate()+30);
   const [range,setRange]=useState({start:dateKey(today), end:dateKey(in30)});
 
@@ -66,35 +66,107 @@ export default function AppointmentPlanner(){
     {id:7,name:"니콩", wants:"", blocks:"", mode:"block", showCal:false},
   ]);
 
-  // ✅ 선택된 사람만 열기
-  const [activeId,setActiveId]=useState(people[0].id);
-  useEffect(()=>{ // 활성화 바뀌면 해당 카드만 달력 보이기
+  // --- Firebase 공유용 상태
+  const [roomId, setRoomId] = useState(null);
+  const [isReady, setIsReady] = useState(false);
+
+  // 저장(디바운스) —— 문서 없을 때도 동작하게 setDoc+merge 사용
+  let saveTimer;
+  async function saveRoomNow(refData, rid) {
+    const ref = doc(db, "rooms", rid);
+    await setDoc(ref, { ...refData, updatedAt: serverTimestamp() }, { merge: true });
+  }
+  function saveRoom(refData){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      if (!roomId) return;
+      saveRoomNow(refData, roomId).catch((e)=>console.error("saveRoom error:", e));
+    }, 300);
+  }
+
+  // 방 생성 & 실시간 구독 (한 번만)
+  useEffect(() => {
+    let unsub = null;
+    (async () => {
+      try {
+        await ensureAnonAuth();
+
+        // URL room 파라미터 확보 (없으면 생성해서 붙임)
+        let rid = new URL(window.location.href).searchParams.get("room");
+        if (!rid) {
+          rid = Math.random().toString(36).slice(2, 10);
+          const url = new URL(window.location.href);
+          url.searchParams.set("room", rid);
+          window.history.replaceState(null, "", url.toString());
+        }
+        setRoomId(rid);
+
+        const ref = doc(db, "rooms", rid);
+
+        // 문서 초기 생성/병합
+        await setDoc(ref, {
+          range: { start: range.start, end: range.end },
+          people,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+
+        // 실시간 구독
+        unsub = onSnapshot(ref, (snap) => {
+          if (!snap.exists()) return;
+          const d = snap.data();
+          if (d.range) setRange(d.range);
+          if (d.people) setPeople(d.people);
+          setIsReady(true);
+        }, (err) => console.error("onSnapshot error:", err));
+      } catch (e) {
+        console.error("init error:", e);
+      }
+    })();
+    return () => { if (unsub) unsub(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // --- 이름 선택 UI (처음엔 이름만, 선택한 사람만 열기)
+  const [activeId,setActiveId]=useState(1);
+  useEffect(()=>{
     setPeople(prev=>prev.map(p=>p.id===activeId?{...p,showCal:true}:{...p,showCal:false}));
   },[activeId]);
 
+  // --- 계산
   const universe=useMemo(()=>new Set(enumerateDates(range.start, range.end)),[range]);
-
   const availability=useMemo(()=>people.map(p=>{
-    const wants=parseDateList(p.wants); const blocks=parseDateList(p.blocks);
-    const base=wants.size>0?wants:universe; const avail=diff(base,blocks);
+    const wants=parseDateList(p.wants), blocks=parseDateList(p.blocks);
+    const base=wants.size>0?wants:universe, avail=diff(base,blocks);
     return {id:p.id,name:p.name,available:avail};
   }),[people,universe]);
-
   const common=useMemo(()=>{ let cur=new Set(universe); for(const ap of availability){ cur=intersect(cur,ap.available); if(cur.size===0)break;} return cur; },[availability,universe]);
-
   const scored=useMemo(()=>{
     const counts={}; for(const d of universe) counts[d]=0;
     for(const ap of availability) for(const d of ap.available) if(counts[d]!=null) counts[d]+=1;
     return Object.entries(counts).map(([date,count])=>({date,count})).sort((a,b)=>(b.count-a.count)||(a.date.localeCompare(b.date)));
   },[availability,universe]);
-
   const commonList=useMemo(()=>Array.from(common).sort(),[common]);
 
+  // --- 핸들러 (모든 변경에서 saveRoom 호출)
   const handlePersonChange=(idx,key,val)=>{
-    setPeople(prev=>{ const next=[...prev]; next[idx]={...next[idx],[key]:val}; return next; });
+    setPeople(prev=>{
+      const next=[...prev];
+      next[idx]={...next[idx],[key]:val};
+      saveRoom({ range, people: next });
+      return next;
+    });
   };
-  const addPerson=()=>setPeople(prev=>[...prev,{id:prev.length+1,name:`참가자 ${prev.length+1}`,wants:"",blocks:"",mode:"block",showCal:false}]);
-  const removePerson=(idx)=>setPeople(prev=>prev.filter((_,i)=>i!==idx));
+  const addPerson=()=>setPeople(prev=>{
+    const next=[...prev,{id:prev.length+1,name:`참가자 ${prev.length+1}`,wants:"",blocks:"",mode:"block",showCal:false}];
+    saveRoom({ range, people: next });
+    return next;
+  });
+  const removePerson=(idx)=>setPeople(prev=>{
+    const next=prev.filter((_,i)=>i!==idx);
+    saveRoom({ range, people: next });
+    return next;
+  });
 
   const exportCSV=()=>{
     const header=["이름","불가 날짜","원하는 날짜"].join(",");
@@ -113,14 +185,16 @@ export default function AppointmentPlanner(){
     alert("결과를 복사했어요!");
   };
 
-  // 요약 뱃지
   const personBadge=(p)=>{
-    const b=parseDateList(p.blocks).size;
-    const w=parseDateList(p.wants).size;
+    const b=parseDateList(p.blocks).size, w=parseDateList(p.wants).size;
     return <span className="text-[11px] text-gray-600 ml-1">({b}불가/{w}원함)</span>;
   };
 
-  // 이름 선택 바 (필요한 정보만)
+  // ✅ 로딩 상태 처리
+  if (!isReady || !roomId) {
+    return <div className="p-6 text-sm text-gray-600">방 준비 중… 잠시만요.</div>;
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold">약속잡기 도우미</h1>
@@ -129,11 +203,29 @@ export default function AppointmentPlanner(){
         <CardContent className="grid md:grid-cols-3 gap-3 items-end">
           <div>
             <label className="text-sm font-medium">기간 시작</label>
-            <input type="date" value={range.start} onChange={e=>setRange(r=>({...r,start:e.target.value}))} className="mt-1 w-full border rounded-xl px-3 py-2"/>
+            <input
+              type="date"
+              value={range.start}
+              onChange={(e)=>{
+                const next={...range,start:e.target.value};
+                setRange(next);
+                saveRoom({ range: next, people });
+              }}
+              className="mt-1 w-full border rounded-xl px-3 py-2"
+            />
           </div>
           <div>
             <label className="text-sm font-medium">기간 종료</label>
-            <input type="date" value={range.end} onChange={e=>setRange(r=>({...r,end:e.target.value}))} className="mt-1 w-full border rounded-xl px-3 py-2"/>
+            <input
+              type="date"
+              value={range.end}
+              onChange={(e)=>{
+                const next={...range,end:e.target.value};
+                setRange(next);
+                saveRoom({ range: next, people });
+              }}
+              className="mt-1 w-full border rounded-xl px-3 py-2"
+            />
           </div>
           <div className="flex gap-2">
             <Button onClick={exportCSV}>⬇️ 입력 템플릿 CSV</Button>
@@ -163,11 +255,8 @@ export default function AppointmentPlanner(){
 
       {/* 선택된 사람만 표시 */}
       {people.map((p,idx)=>{
-        if(p.id!==activeId) return null; // 숨김
+        if(p.id!==activeId) return null;
         const c=NAME_COLORS[idx%NAME_COLORS.length];
-        const dateList=Array.from(universe).sort();
-        const blocksSet=parseDateList(p.blocks);
-        const wantsSet=parseDateList(p.wants);
         return (
           <Card key={p.id} style={{background:c.bg, borderColor:c.ring}}>
             <CardContent className="space-y-3">
@@ -203,53 +292,48 @@ export default function AppointmentPlanner(){
                 </div>
               </div>
 
-{/* Flatpickr 달력: jQuery-UI 스타일 */}
-<div className="border rounded-xl p-3 bg-white/70">
-  <div className="text-sm font-medium mb-2">기간 내 날짜 선택</div>
-
-
-<Flatpickr
-  options={{
-    inline: true,
-    mode: "multiple",
-    minDate: range.start,
-    maxDate: range.end,
-    showMonths: 1,
-    locale: ko.ko,
-  }}
-  onChange={(selectedDates, _str, fp) => {
-    selectedDates.forEach((d) => {
-      const key = fp.formatDate(d, "Y-m-d");
-      if (p.mode === "block") {
-        handlePersonChange(idx, "blocks", toggleDateInText(p.blocks, key));
-      } else {
-        handlePersonChange(idx, "wants", toggleDateInText(p.wants, key));
-      }
-    });
-    fp.clear(); // Flatpickr 기본 선택색 지워서 우리 색만 보이게
-  }}
-  onDayCreate={(_dObj, _dStr, fp, dayElem) => {
-    const key = fp.formatDate(dayElem.dateObj, "Y-m-d");
-    if (parseDateList(p.blocks).has(key)) dayElem.classList.add("blocked");
-    if (parseDateList(p.wants).has(key))  dayElem.classList.add("wanted");
-  }}
-/>
-
-
-  <div className="text-xs text-gray-500 mt-2">
-    표시색: <span className="px-2 py-0.5 rounded border blocked">불가</span>
-    {" · "}
-    <span className="px-2 py-0.5 rounded border wanted">원하는</span>
-    {"  "} (우측의 “선택 모드”를 바꾸고 날짜를 클릭하세요)
-  </div>
-</div>
-
+              {/* Flatpickr 달력: jQuery-UI 스타일 */}
+              <div className="border rounded-xl p-3 bg-white/70">
+                <div className="text-sm font-medium mb-2">기간 내 날짜 선택</div>
+                <Flatpickr
+                  options={{
+                    inline: true,
+                    mode: "multiple",
+                    minDate: range.start,
+                    maxDate: range.end,
+                    showMonths: 1,
+                    locale: ko.ko,
+                  }}
+                  onChange={(selectedDates, _str, fp) => {
+                    selectedDates.forEach((d) => {
+                      const key = fp.formatDate(d, "Y-m-d");
+                      if (p.mode === "block") {
+                        handlePersonChange(idx, "blocks", toggleDateInText(p.blocks, key));
+                      } else {
+                        handlePersonChange(idx, "wants", toggleDateInText(p.wants, key));
+                      }
+                    });
+                    fp.clear();
+                  }}
+                  onDayCreate={(_dObj, _dStr, fp, dayElem) => {
+                    const key = fp.formatDate(dayElem.dateObj, "Y-m-d");
+                    if (parseDateList(p.blocks).has(key)) dayElem.classList.add("blocked");
+                    if (parseDateList(p.wants).has(key))  dayElem.classList.add("wanted");
+                  }}
+                />
+                <div className="text-xs text-gray-500 mt-2">
+                  표시색: <span className="px-2 py-0.5 rounded border blocked">불가</span>
+                  {" · "}
+                  <span className="px-2 py-0.5 rounded border wanted">원하는</span>
+                  {"  "} (우측의 “선택 모드”를 바꾸고 날짜를 클릭하세요)
+                </div>
+              </div>
             </CardContent>
           </Card>
         );
       })}
 
-      {/* 결과 (전체 계산은 유지, 화면 잡음 최소화) */}
+      {/* 결과 */}
       <Card>
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between">
