@@ -1,51 +1,193 @@
-@import "flatpickr/dist/flatpickr.min.css";
-@import "flatpickr/dist/themes/airbnb.css";  /* 원하는 테마로 바꿔도 됨 */
+@import "flatpickr/dist/flatpickr.css";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-/* Flatpickr 기본 테마 (맘에 드는 걸로 변경 가능: airbnb, material_blue 등) */
-@import "flatpickr/dist/themes/airbnb.css";
+/* ── 기본 리셋 ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background: #f4f4f0; color: #1a1a1a; }
 
-/* 상태 색상 */
-.flatpickr-day.blocked { background:#fee2e2; border:1px solid #fca5a5; }
-.flatpickr-day.wanted  { background:#dcfce7; border:1px solid #86efac; }
+/* ── 레이아웃 ── */
+.app-root { min-height: 100vh; background: #f4f4f0; padding: 2rem 1rem 4rem; }
+.app-inner { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
 
-/* 선택한 사람의 불가 날짜 표시 */
-.flatpickr-day.blocked { background:#fee2e2; border:1px solid #fca5a5; }
+/* ── 로딩 ── */
+.app-loading { min-height:100vh; display:flex; align-items:center; justify-content:center; gap:8px; }
+.loading-dot { width:8px; height:8px; border-radius:50%; background:#1a1a1a; animation: pulse 1.2s infinite; }
+.loading-dot:nth-child(2){ animation-delay:.2s; } .loading-dot:nth-child(3){ animation-delay:.4s; }
+@keyframes pulse { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+
+/* ── 헤더 ── */
+.app-header { padding: 1.5rem 0 0.5rem; text-align: center; }
+.header-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #888; margin-bottom: .4rem; }
+.app-title { font-size: 2rem; font-weight: 800; letter-spacing: -.03em; cursor: pointer; display: inline-flex; align-items: center; gap: .4rem; transition: color .15s; }
+.app-title:hover { color: #555; }
+.title-edit-icon { font-size: 1rem; opacity: .5; }
+.title-input { font-size: 2rem; font-weight: 800; letter-spacing: -.03em; border: none; border-bottom: 2px solid #1a1a1a; outline: none; background: transparent; text-align: center; width: 100%; }
+.header-hint { font-size: 11px; color: #aaa; margin-top: .3rem; }
+
+/* ── 가이드 카드 ── */
+.guide-card { background: #1a1a1a; border-radius: 16px; padding: 1.25rem 1.25rem 1rem; }
+.guide-steps { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.guide-step { display: flex; flex-direction: column; gap: 2px; }
+.guide-num { font-size: 11px; color: #888; font-weight: 600; }
+.guide-title { font-size: 13px; font-weight: 700; color: #fff; }
+.guide-desc { font-size: 11px; color: #777; line-height: 1.4; }
+
+/* ── 공통 카드 ── */
+.card { background: #fff; border-radius: 16px; padding: 1.25rem; border: 1px solid #ebebeb; }
+.card--success { background: #f0fdf4; border-color: #bbf7d0; }
+.card-label { font-size: 12px; font-weight: 700; color: #888; letter-spacing: .04em; text-transform: uppercase; margin-bottom: .9rem; display: flex; align-items: center; gap: .4rem; }
+.cal-hint { font-size: 10px; font-weight: 400; color: #bbb; margin-left: auto; text-transform: none; letter-spacing: 0; }
+
+/* ── 날짜 입력 ── */
+.date-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.date-label { display: flex; flex-direction: column; gap: .35rem; font-size: 12px; color: #888; font-weight: 500; }
+.date-input { border: 1px solid #e5e5e5; border-radius: 10px; padding: .55rem .75rem; font-size: 14px; color: #1a1a1a; outline: none; transition: border-color .15s; }
+.date-input:focus { border-color: #1a1a1a; }
+
+/* ── 참여자 버튼 ── */
+.people-grid { display: flex; flex-direction: column; gap: .45rem; }
+.person-btn { display: flex; align-items: center; gap: .75rem; width: 100%; padding: .75rem 1rem; border-radius: 12px; border: 1.5px solid #ebebeb; background: #fafafa; cursor: pointer; transition: all .15s; text-align: left; }
+.person-btn:hover { border-color: var(--accent); background: #fff; }
+.person-btn--active { border-color: var(--accent) !important; background: #fff !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent); }
+.person-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0; }
+.person-name { font-size: 15px; font-weight: 600; color: #1a1a1a; flex: 1; }
+.person-badge { font-size: 11px; color: #ef4444; background: #fee2e2; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+.person-close { font-size: 11px; color: #bbb; margin-left: auto; }
+
+/* ── 달력 공통 ── */
+/* ── 달력 공통 ── */
+.fp-hidden { display: none; }
+
+.cal-card .flatpickr-calendar {
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent !important;
+  width: 100% !important;
+}
+.cal-card .flatpickr-months {
+  margin-bottom: .5rem;
+}
+.cal-card .flatpickr-innerContainer,
+.cal-card .flatpickr-rContainer {
+  width: 100% !important;
+}
+.cal-card .flatpickr-days,
+.cal-card .dayContainer {
+  width: 100% !important;
+  min-width: unset !important;
+  max-width: unset !important;
+}
+/* 날짜 셀: 7등분으로 꽉 채움 */
+.cal-card .flatpickr-day {
+  flex: 1 1 calc(100% / 7) !important;
+  max-width: calc(100% / 7) !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #1a1a1a !important;
+  height: 38px !important;
+  line-height: 38px !important;
+  margin: 1px 0 !important;
+}
+.cal-card .flatpickr-day:hover {
+  background: #f4f4f0 !important;
+}
+.cal-card .flatpickr-day.flatpickr-disabled {
+  color: #ddd !important;
+}
+.cal-card .flatpickr-day.selected {
+  background: transparent !important;
+  border: none !important;
+}
+/* 요일 헤더도 7등분 */
+.cal-card .flatpickr-weekdays {
+  width: 100% !important;
+}
+.cal-card .flatpickr-weekday {
+  flex: 1 1 calc(100% / 7) !important;
+  max-width: calc(100% / 7) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #aaa !important;
+}
+
+/* 일요일 열 (첫 번째) 빨간색 */
+.cal-card .flatpickr-day:nth-child(7n+1) {
+  color: #ef4444 !important;
+}
+/* 토요일 열 (마지막) 파란색 */
+.cal-card .flatpickr-day:nth-child(7n) {
+  color: #3b82f6 !important;
+}
+/* 요일 헤더 일/토 색상 */
+.cal-card .flatpickr-weekday:first-child { color: #ef4444 !important; }
+.cal-card .flatpickr-weekday:last-child  { color: #3b82f6 !important; }
+
+/* 불가 날짜 */
+.fp-blocked {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  border-color: #fca5a5 !important;
+}
 
 /* 결과 달력 색상 */
-.flatpickr-day.all-free  { background:#dcfce7; border:1px solid #86efac; }
-.flatpickr-day.part-free { background:#fef9c3; border:1px solid #fde047; }
-.flatpickr-day.all-busy  { background:#fee2e2; border:1px solid #fca5a5; }
+.cal-all-free {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  font-weight: 800 !important;
+}
+.cal-part-free {
+  background: #fef9c3 !important;
+  color: #854d0e !important;
+}
+.cal-all-busy {
+  background: #f4f4f0 !important;
+  color: #ccc !important;
+  text-decoration: line-through;
+}
 
-/* 범례 점 */
-.legend { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:middle; margin-right:4px; }
-.legend-allfree { background:#dcfce7; border:1px solid #86efac; }
-.legend-part { background:#fef9c3; border:1px solid #fde047; }
-.legend-busy { background:#fee2e2; border:1px solid #fca5a5; }
-/* Flatpickr가 렌더하는 기본 입력박스 숨기기 */
-.flatpickr-input-hidden { display: none !important; }
+/* 배지 (인원 수) */
+.cal-badge {
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.4;
+  pointer-events: none;
+  color: inherit;
+}
+
+/* 불가 날짜 */
+.fp-blocked { background: #fee2e2 !important; color: #dc2626 !important; border-color: #fca5a5 !important; }
 
 /* 결과 달력 색상 */
-.all-free {
-  background-color: #bbf7d0 !important;   /* 연녹색 */
-  border-radius: 6px;
-}
-.part-free {
-  background-color: #fef08a !important;   /* 연노랑 */
-  border-radius: 6px;
-}
-.all-busy {
-  background-color: #fecaca !important;   /* 연빨강 */
-  border-radius: 6px;
+.cal-all-free { background: #dcfce7 !important; color: #166534 !important; font-weight: 800 !important; }
+.cal-part-free { background: #fef9c3 !important; color: #854d0e !important; }
+.cal-all-busy { background: #f4f4f0 !important; color: #ccc !important; text-decoration: line-through; }
+
+/* 배지 (인원 수) */
+.cal-badge {
+  position: absolute;
+  right: 2px; bottom: 1px;
+  font-size: 9px; font-weight: 700;
+  line-height: 1.4;
+  pointer-events: none;
+  color: inherit;
 }
 
-/* Flatpickr가 만드는 기본 입력박스 숨기기 */
-input.flatpickr-input {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-}
+/* ── 범례 ── */
+.legend-row { display: flex; gap: 1rem; margin-top: .9rem; padding-top: .75rem; border-top: 1px solid #f0f0f0; }
+.legend-item { display: flex; align-items: center; gap: .3rem; font-size: 12px; color: #888; }
+.legend-dot { width: 12px; height: 12px; border-radius: 4px; flex-shrink: 0; }
+.legend-green { background: #dcfce7; border: 1px solid #4ade80; }
+.legend-yellow { background: #fef9c3; border: 1px solid #fde047; }
+.legend-gray { background: #f4f4f0; border: 1px solid #e5e5e5; }
+
+/* ── 전원 가능 날짜 목록 ── */
+.empty-msg { font-size: 13px; color: #aaa; }
+.free-list { list-style: none; display: flex; flex-direction: column; gap: .3rem; }
+.free-item { display: flex; align-items: center; gap: .5rem; font-size: 14px; color: #166534; padding: .35rem 0; border-bottom: 1px solid #f0fdf4; }
+.free-item--weekend { color: #dc2626; }
+.free-date { font-weight: 600; }
+.free-day { font-size: 12px; color: #4ade80; }
+.free-day--weekend { color: #fca5a5; }
