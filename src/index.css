@@ -24,12 +24,12 @@ body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background:
 .header-hint { font-size: 11px; color: #aaa; margin-top: .3rem; }
 
 /* ── 가이드 카드 ── */
-.guide-card { background: #1a1a1a; border-radius: 16px; padding: 1.25rem 1.25rem 1rem; }
+.guide-card { background: #eef4ff; border-radius: 16px; padding: 1.25rem 1.25rem 1rem; border: 1px solid #c7d9f8; }
 .guide-steps { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 .guide-step { display: flex; flex-direction: column; gap: 2px; }
-.guide-num { font-size: 11px; color: #888; font-weight: 600; }
-.guide-title { font-size: 13px; font-weight: 700; color: #fff; }
-.guide-desc { font-size: 11px; color: #777; line-height: 1.4; }
+.guide-num { font-size: 11px; color: #6b8fcf; font-weight: 600; }
+.guide-title { font-size: 13px; font-weight: 700; color: #1e3a6e; }
+.guide-desc { font-size: 11px; color: #5a7ab5; line-height: 1.4; }
 
 /* ── 공통 카드 ── */
 .card { background: #fff; border-radius: 16px; padding: 1.25rem; border: 1px solid #ebebeb; }
@@ -56,6 +56,7 @@ body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background:
 /* ── 달력 공통 ── */
 /* ── 달력 공통 ── */
 .fp-hidden { display: none; }
+.fp-hidden + .flatpickr-calendar { display: block !important; }
 
 .cal-card .flatpickr-calendar {
   box-shadow: none !important;
@@ -183,11 +184,66 @@ body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background:
 .legend-yellow { background: #fef9c3; border: 1px solid #fde047; }
 .legend-gray { background: #f4f4f0; border: 1px solid #e5e5e5; }
 
-/* ── 전원 가능 날짜 목록 ── */
+/* ── 전원 가능 날짜 그리드 ── */
 .empty-msg { font-size: 13px; color: #aaa; }
-.free-list { list-style: none; display: flex; flex-direction: column; gap: .3rem; }
-.free-item { display: flex; align-items: center; gap: .5rem; font-size: 14px; color: #166534; padding: .35rem 0; border-bottom: 1px solid #f0fdf4; }
-.free-item--weekend { color: #dc2626; }
-.free-date { font-weight: 600; }
-.free-day { font-size: 12px; color: #4ade80; }
-.free-day--weekend { color: #fca5a5; }
+.free-grid { display: flex; flex-wrap: wrap; gap: .4rem; }
+.free-chip {
+  display: flex; flex-direction: column; align-items: center;
+  background: #dcfce7; border: 1px solid #86efac;
+  border-radius: 12px; padding: .4rem .65rem;
+  min-width: 48px;
+}
+.free-chip--weekend { background: #fee2e2; border-color: #fca5a5; }
+.chip-date { font-size: 13px; font-weight: 700; color: #166534; }
+.free-chip--weekend .chip-date { color: #dc2626; }
+.chip-day { font-size: 10px; color: #4ade80; font-weight: 600; }
+.free-chip--weekend .chip-day { color: #f87171; }
+
+/* ── 참여자 편집 버튼 ── */
+.member-count { font-size: 11px; color: #aaa; font-weight: 400; margin-left: .2rem; text-transform: none; letter-spacing: 0; }
+.settings-btn { margin-left: auto; font-size: 12px; font-weight: 600; color: #555; background: #f4f4f0; border: 1px solid #e5e5e5; border-radius: 8px; padding: 3px 10px; cursor: pointer; transition: background .15s; text-transform: none; letter-spacing: 0; }
+.settings-btn:hover { background: #eaeae6; }
+
+/* ── 모달 오버레이 ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+.modal {
+  background: #fff;
+  border-radius: 20px;
+  width: 100%; max-width: 400px;
+  padding: 1.5rem;
+  display: flex; flex-direction: column; gap: 1rem;
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-header { display: flex; align-items: center; justify-content: space-between; }
+.modal-title { font-size: 16px; font-weight: 800; }
+.modal-close { background: none; border: none; font-size: 16px; color: #aaa; cursor: pointer; padding: 4px; }
+.modal-hint { font-size: 12px; color: #aaa; margin-top: -.5rem; }
+
+/* 참여자 목록 */
+.modal-list { display: flex; flex-direction: column; gap: .5rem; }
+.modal-row { display: flex; align-items: center; gap: .6rem; }
+.modal-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+.modal-name-input { flex: 1; border: 1px solid #e5e5e5; border-radius: 10px; padding: .45rem .75rem; font-size: 14px; outline: none; transition: border-color .15s; }
+.modal-name-input:focus { border-color: #1a1a1a; }
+.modal-remove { background: none; border: none; color: #ccc; font-size: 14px; cursor: pointer; padding: 4px 6px; border-radius: 6px; transition: color .15s, background .15s; }
+.modal-remove:hover:not(:disabled) { color: #ef4444; background: #fee2e2; }
+.modal-remove:disabled { opacity: .3; cursor: not-allowed; }
+
+/* 추가 버튼 */
+.modal-add-btn { width: 100%; padding: .6rem; border: 1.5px dashed #e5e5e5; border-radius: 12px; background: none; color: #888; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.modal-add-btn:hover:not(:disabled) { border-color: #1a1a1a; color: #1a1a1a; background: #fafafa; }
+.modal-add-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* 푸터 버튼 */
+.modal-footer { display: flex; gap: .5rem; padding-top: .5rem; border-top: 1px solid #f0f0f0; }
+.modal-cancel { flex: 1; padding: .65rem; border: 1px solid #e5e5e5; border-radius: 12px; background: #fafafa; font-size: 14px; font-weight: 600; color: #888; cursor: pointer; }
+.modal-save { flex: 2; padding: .65rem; border: none; border-radius: 12px; background: #1a1a1a; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; transition: background .15s; }
+.modal-save:hover { background: #333; }
+
+.fold-icon { margin-left: .3rem; font-size: 10px; color: #bbb; }
