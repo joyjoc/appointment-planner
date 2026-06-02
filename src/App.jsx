@@ -333,20 +333,15 @@ export default function AppointmentPlanner(){
 
     <Flatpickr
       className="fp-hidden"
-      options={{
-        inline: true,
-        mode: "multiple",
-        minDate: range.start,
-        maxDate: range.end,
-        showMonths: Math.min(
-          Math.ceil(
-            (new Date(range.end) - new Date(range.start)) / (1000*60*60*24*28)
-          ) + 1,
-          3
-        ),
-        locale: ko.ko,
-        clickOpens: false,
-      }}
+options={{
+  inline: true,
+  mode: "multiple",
+  minDate: range.start,
+  maxDate: range.end,
+  showMonths: 1,
+  locale: ko.ko,
+  clickOpens: false,
+}}
       onDayCreate={(_d,_s,fp,dayElem)=>{
         const key = fp.formatDate(dayElem.dateObj,"Y-m-d");
         const set = parseList(people[activeIndex].blocks);

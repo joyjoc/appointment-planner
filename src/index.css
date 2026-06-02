@@ -73,12 +73,12 @@ body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background:
   flex: 1 1 calc(100% / 7) !important;
   max-width: calc(100% / 7) !important;
   border-radius: 10px !important;
-  font-size: 13px !important;
+  font-size: 15px !important;
   font-weight: 600 !important;
   color: #1a1a1a !important;
-  height: 38px !important;
-  line-height: 38px !important;
-  margin: 1px 0 !important;
+  height: 46px !important;
+  line-height: 46px !important;
+  margin: 2px 0 !important;
 }
 .cal-card .flatpickr-day:hover { background: #f4f4f0 !important; }
 .cal-card .flatpickr-day.flatpickr-disabled { color: #ddd !important; }
@@ -87,9 +87,10 @@ body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background:
 .cal-card .flatpickr-weekday {
   flex: 1 1 calc(100% / 7) !important;
   max-width: calc(100% / 7) !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   font-weight: 700 !important;
   color: #aaa !important;
+  padding: 6px 0 !important;
 }
 .cal-card .flatpickr-day:nth-child(7n+1) { color: #ef4444 !important; }
 .cal-card .flatpickr-day:nth-child(7n)   { color: #3b82f6 !important; }
