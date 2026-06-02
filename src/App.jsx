@@ -45,6 +45,71 @@ const DEFAULT_PEOPLE = [
   {id:7,name:"Nina",blocks:""},
 ];
 
+/* ── 결과 달력 컴포넌트 (Flatpickr 없이 직접 렌더링) ── */
+function ResultCalendar({ range, countsPerDate, total, holidays }) {
+  const months = useMemo(() => {
+    const dates = enumerateDates(range.start, range.end);
+    if (!dates.length) return [];
+    const map = {};
+    dates.forEach(d => {
+      const ym = d.slice(0, 7);
+      if (!map[ym]) map[ym] = [];
+      map[ym].push(d);
+    });
+    return Object.entries(map).sort(([a],[b]) => a.localeCompare(b));
+  }, [range]);
+
+  return (
+    <div style={{display:"flex", flexDirection:"column", gap:"1.5rem"}}>
+      {months.map(([ym, dates]) => {
+        const [y, m] = ym.split("-");
+        const firstDow = new Date(dates[0]).getDay();
+
+        const cells = [];
+        for (let i = 0; i < firstDow; i++) cells.push(null);
+        dates.forEach(d => cells.push(d));
+        while (cells.length % 7 !== 0) cells.push(null);
+
+        const weeks = [];
+        for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i+7));
+
+        return (
+          <div key={ym}>
+            <div className="rc-header">{y}년 {parseInt(m)}월</div>
+            <div className="rc-grid">
+              {["일","월","화","수","목","금","토"].map((d,i)=>(
+                <div key={d} className={cls("rc-dow", i===0&&"rc-sun", i===6&&"rc-sat")}>{d}</div>
+              ))}
+              {weeks.map((week, wi) =>
+                week.map((date, di) => {
+                  if (!date) return <div key={`e-${wi}-${di}`} className="rc-cell rc-empty"/>;
+                  const able = countsPerDate[date] ?? 0;
+                  const dow = new Date(date).getDay();
+                  const isRed = dow===0 || holidays.has(date);
+                  const isSat = dow===6;
+                  const dd = parseInt(date.split("-")[2]);
+
+                  let cellCls = "rc-cell";
+                  if (able === total) cellCls += " rc-all-free";
+                  else if (able === 0) cellCls += " rc-all-busy";
+                  else cellCls += " rc-part-free";
+
+                  return (
+                    <div key={date} className={cellCls}>
+                      <span className={cls("rc-num", isRed&&"rc-red", isSat&&"rc-blue")}>{dd}</span>
+                      <span className="rc-badge">{able}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AppointmentPlanner(){
   const today=new Date(); const in30=new Date(); in30.setDate(today.getDate()+30);
   const [range,setRange]=useState({ start: dateKey(today), end: dateKey(in30) });
@@ -54,9 +119,8 @@ export default function AppointmentPlanner(){
   const [roomId, setRoomId] = useState(null);
   const [ready, setReady] = useState(false);
   const [activeId, setActiveId] = useState(null);
-  const [peopleOpen, setPeopleOpen] = useState(true); // ← 추가
+  const [peopleOpen, setPeopleOpen] = useState(true);
 
-  // 설정 모달
   const [showSettings, setShowSettings] = useState(false);
   const [draftPeople, setDraftPeople] = useState([]);
 
@@ -66,20 +130,13 @@ export default function AppointmentPlanner(){
   };
   const addPerson = () => {
     if (draftPeople.length >= 10) return;
-    const newId = Date.now();
-    setDraftPeople(prev=>[...prev, {id:newId, name:"", blocks:""}]);
+    setDraftPeople(prev=>[...prev, {id:Date.now(), name:"", blocks:""}]);
   };
-  const removePerson = (id) => {
-    setDraftPeople(prev=>prev.filter(p=>p.id!==id));
-  };
-  const renamePerson = (id, name) => {
-    setDraftPeople(prev=>prev.map(p=>p.id===id?{...p,name}:p));
-  };
+  const removePerson = (id) => setDraftPeople(prev=>prev.filter(p=>p.id!==id));
+  const renamePerson = (id, name) => setDraftPeople(prev=>prev.map(p=>p.id===id?{...p,name}:p));
   const saveSettings = () => {
-    const cleaned = draftPeople
-      .map(p=>({...p, name:p.name.trim()}))
-      .filter(p=>p.name.length>0);
-    if (cleaned.length === 0) return;
+    const cleaned = draftPeople.map(p=>({...p,name:p.name.trim()})).filter(p=>p.name.length>0);
+    if (!cleaned.length) return;
     setPeople(cleaned);
     saveRoom({ range, people: cleaned, title });
     setShowSettings(false);
@@ -111,7 +168,7 @@ export default function AppointmentPlanner(){
       const ref = doc(db, "rooms", rid);
       const snap = await getDoc(ref);
       if (!snap.exists()) {
-        await setDoc(ref, { range, people, title: "약속잡기", createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+        await setDoc(ref, { range, people, title:"약속잡기", createdAt:serverTimestamp(), updatedAt:serverTimestamp() }, { merge:true });
       }
       unsub = onSnapshot(ref, (ds) => {
         if (!ds.exists()) return;
@@ -145,22 +202,6 @@ export default function AppointmentPlanner(){
       saveRoom({ range, people: arr, title });
       return arr;
     });
-  };
-
-  const decorateResultDay = (dayElem, fp) => {
-    const key = fp.formatDate(dayElem.dateObj, "Y-m-d");
-    if (KR_HOLIDAYS.has(key)) dayElem.style.color = "#ef4444";
-    if (countsPerDate[key] == null) return;
-    const able = countsPerDate[key];
-    const total = people.length;
-    if (able === total) dayElem.classList.add("cal-all-free");
-    else if (able === 0) dayElem.classList.add("cal-all-busy");
-    else dayElem.classList.add("cal-part-free");
-    const badge = document.createElement("span");
-    badge.textContent = String(able);
-    badge.className = "cal-badge";
-    dayElem.style.position = "relative";
-    dayElem.appendChild(badge);
   };
 
   if (!ready || !roomId) {
@@ -238,76 +279,99 @@ export default function AppointmentPlanner(){
           </div>
         </section>
 
-{/* 참여자 */}
-<section className="card">
-  <div className="card-label" style={{cursor:"pointer", marginBottom: peopleOpen ? ".9rem" : "0"}} onClick={()=>setPeopleOpen(o=>!o)}>
-    👥 참여자
-    <span className="member-count">{people.length}명</span>
-    <button className="settings-btn" onClick={e=>{e.stopPropagation(); openSettings();}}>⚙️ 편집</button>
-    <span className="fold-icon">{peopleOpen ? "▲" : "▼"}</span>
-  </div>
-  {peopleOpen && (
-    <div className="people-grid">
-      {people.map((p,i)=>{
-        const color = MEMBER_COLORS[i % MEMBER_COLORS.length];
-        const active = p.id === activeId;
-        const blockedCount = parseList(p.blocks).size;
-        return (
-          <button
-            key={p.id}
-            onClick={()=>setActiveId(active ? null : p.id)}
-            className={cls("person-btn", active && "person-btn--active")}
-            style={{ "--accent": color }}
+        {/* 참여자 */}
+        <section className="card">
+          <div
+            className="card-label"
+            style={{cursor:"pointer", marginBottom: peopleOpen ? ".9rem" : "0"}}
+            onClick={()=>setPeopleOpen(o=>!o)}
           >
-            <span className="person-avatar" style={{background:color+"22",color}}>
-              {p.name[0]}
-            </span>
-            <span className="person-name">{p.name}</span>
-            {blockedCount > 0 && (
-              <span className="person-badge">{blockedCount}일 불가</span>
-            )}
-            {active && <span className="person-close">✕</span>}
-          </button>
-        );
-      })}
-    </div>
-  )}
-</section>
-
-        {/* 개인 불가 달력 */}
-        {activeId !== null && people[activeIndex] && (
-          <section className="card cal-card">
-            <div className="card-label">
-              🚫 <span style={{color:MEMBER_COLORS[activeIndex%MEMBER_COLORS.length]}}>
-                {people[activeIndex].name}
-              </span>의 불가 날짜
-              <span className="cal-hint">날짜를 탭하면 표시돼요</span>
+            👥 참여자
+            <span className="member-count">{people.length}명</span>
+            <button className="settings-btn" onClick={e=>{ e.stopPropagation(); openSettings(); }}>⚙️ 편집</button>
+            <span className="fold-icon">{peopleOpen ? "▲" : "▼"}</span>
+          </div>
+          {peopleOpen && (
+            <div className="people-grid">
+              {people.map((p,i)=>{
+                const color = MEMBER_COLORS[i % MEMBER_COLORS.length];
+                const active = p.id === activeId;
+                const blockedCount = parseList(p.blocks).size;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={()=>setActiveId(active ? null : p.id)}
+                    className={cls("person-btn", active && "person-btn--active")}
+                    style={{ "--accent": color }}
+                  >
+                    <span className="person-avatar" style={{background:color+"22",color}}>{p.name[0]}</span>
+                    <span className="person-name">{p.name}</span>
+                    {blockedCount > 0 && <span className="person-badge">{blockedCount}일 불가</span>}
+                    {active && <span className="person-close">✕</span>}
+                  </button>
+                );
+              })}
             </div>
-            <Flatpickr
-              options={{ inline:true, mode:"multiple", minDate:range.start, maxDate:range.end, showMonths:1, locale:ko.ko, clickOpens:false }}
-              onDayCreate={(_d,_s,fp,dayElem)=>{
-                const key = fp.formatDate(dayElem.dateObj,"Y-m-d");
-                const set = parseList(people[activeIndex].blocks);
-                if (KR_HOLIDAYS.has(key)) dayElem.style.color = "#ef4444";
-                if (set.has(key)) dayElem.classList.add("fp-blocked");
-                dayElem.addEventListener("click",(ev)=>{
-                  ev.preventDefault(); ev.stopPropagation();
-                  const was = set.has(key);
-                  setBlocks(activeIndex, toggleInText(people[activeIndex].blocks, key));
-                  if (was) dayElem.classList.remove("fp-blocked");
-                  else dayElem.classList.add("fp-blocked");
-                });
-              }}
-            />
-          </section>
-        )}
+          )}
+        </section>
+
+{/* 개인 불가 달력 */}
+{activeId !== null && people[activeIndex] && (
+  <section className="card cal-card">
+    <div className="card-label">
+      🚫 <span style={{color:MEMBER_COLORS[activeIndex%MEMBER_COLORS.length]}}>
+        {people[activeIndex].name}
+      </span>의 불가 날짜
+      <span className="cal-hint">날짜를 탭하면 표시돼요</span>
+    </div>
+
+    {/* 기간 표시 배너 */}
+    <div className="range-banner">
+      <span className="range-label">📌 조율 기간</span>
+      <span className="range-dates">{range.start} ~ {range.end}</span>
+    </div>
+
+    <Flatpickr
+      className="fp-hidden"
+      options={{
+        inline: true,
+        mode: "multiple",
+        minDate: range.start,
+        maxDate: range.end,
+        showMonths: Math.min(
+          Math.ceil(
+            (new Date(range.end) - new Date(range.start)) / (1000*60*60*24*28)
+          ) + 1,
+          3
+        ),
+        locale: ko.ko,
+        clickOpens: false,
+      }}
+      onDayCreate={(_d,_s,fp,dayElem)=>{
+        const key = fp.formatDate(dayElem.dateObj,"Y-m-d");
+        const set = parseList(people[activeIndex].blocks);
+        if (KR_HOLIDAYS.has(key)) dayElem.style.color = "#ef4444";
+        if (set.has(key)) dayElem.classList.add("fp-blocked");
+        dayElem.addEventListener("click",(ev)=>{
+          ev.preventDefault(); ev.stopPropagation();
+          const was = set.has(key);
+          setBlocks(activeIndex, toggleInText(people[activeIndex].blocks, key));
+          if (was) dayElem.classList.remove("fp-blocked");
+          else dayElem.classList.add("fp-blocked");
+        });
+      }}
+    />
+  </section>
+)}
 
         {/* 결과 달력 */}
-        <section className="card cal-card">
+        <section className="card">
           <div className="card-label">📊 결과 달력</div>
-          <Flatpickr
-            options={{ inline:true, mode:"multiple", minDate:range.start, maxDate:range.end, showMonths:1, locale:ko.ko, clickOpens:false, enable:[] }}
-            onDayCreate={(_d,_s,fp,dayElem)=>decorateResultDay(dayElem,fp)}
+          <ResultCalendar
+            range={range}
+            countsPerDate={countsPerDate}
+            total={people.length}
+            holidays={KR_HOLIDAYS}
           />
           <div className="legend-row">
             <span className="legend-item"><span className="legend-dot legend-green"/>전원 가능</span>
@@ -322,25 +386,26 @@ export default function AppointmentPlanner(){
           {allFreeDates.length === 0 ? (
             <p className="empty-msg">아직 전원 가능한 날짜가 없어요</p>
           ) : (
-            <ul className="free-list">
+            <div className="free-grid">
               {allFreeDates.map(([date])=>{
                 const d = new Date(date);
                 const day = ["일","월","화","수","목","금","토"][d.getDay()];
                 const isWeekend = d.getDay()===0||d.getDay()===6||KR_HOLIDAYS.has(date);
+                const [,mm,dd] = date.split("-");
                 return (
-                  <li key={date} className={cls("free-item", isWeekend&&"free-item--weekend")}>
-                    <span className="free-date">{date}</span>
-                    <span className={cls("free-day", isWeekend&&"free-day--weekend")}>({day})</span>
-                  </li>
+                  <div key={date} className={cls("free-chip", isWeekend&&"free-chip--weekend")}>
+                    <span className="chip-date">{mm}/{dd}</span>
+                    <span className="chip-day">{day}</span>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
           )}
         </section>
 
       </div>
 
-      {/* ── 설정 모달 ── */}
+      {/* 설정 모달 */}
       {showSettings && (
         <div className="modal-overlay" onClick={()=>setShowSettings(false)}>
           <div className="modal" onClick={e=>e.stopPropagation()}>
@@ -348,15 +413,13 @@ export default function AppointmentPlanner(){
               <span className="modal-title">👥 참여자 편집</span>
               <button className="modal-close" onClick={()=>setShowSettings(false)}>✕</button>
             </div>
-
             <p className="modal-hint">이름을 수정하거나 추가·삭제할 수 있어요 (최대 10명)</p>
-
             <div className="modal-list">
               {draftPeople.map((p,i)=>{
                 const color = MEMBER_COLORS[i % MEMBER_COLORS.length];
                 return (
                   <div className="modal-row" key={p.id}>
-                    <span className="modal-avatar" style={{background:color+"22",color}}>{(p.name[0]||"?")}</span>
+                    <span className="modal-avatar" style={{background:color+"22",color}}>{p.name[0]||"?"}</span>
                     <input
                       className="modal-name-input"
                       value={p.name}
@@ -373,15 +436,9 @@ export default function AppointmentPlanner(){
                 );
               })}
             </div>
-
-            <button
-              className="modal-add-btn"
-              onClick={addPerson}
-              disabled={draftPeople.length >= 10}
-            >
+            <button className="modal-add-btn" onClick={addPerson} disabled={draftPeople.length >= 10}>
               + 참여자 추가 {draftPeople.length >= 10 && "(최대 10명)"}
             </button>
-
             <div className="modal-footer">
               <button className="modal-cancel" onClick={()=>setShowSettings(false)}>취소</button>
               <button className="modal-save" onClick={saveSettings}>저장</button>

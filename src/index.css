@@ -11,7 +11,8 @@ body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background:
 /* ── 로딩 ── */
 .app-loading { min-height:100vh; display:flex; align-items:center; justify-content:center; gap:8px; }
 .loading-dot { width:8px; height:8px; border-radius:50%; background:#1a1a1a; animation: pulse 1.2s infinite; }
-.loading-dot:nth-child(2){ animation-delay:.2s; } .loading-dot:nth-child(3){ animation-delay:.4s; }
+.loading-dot:nth-child(2){ animation-delay:.2s; }
+.loading-dot:nth-child(3){ animation-delay:.4s; }
 @keyframes pulse { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
 
 /* ── 헤더 ── */
@@ -44,6 +45,11 @@ body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background:
 .date-input:focus { border-color: #1a1a1a; }
 
 /* ── 참여자 버튼 ── */
+.member-count { font-size: 11px; color: #aaa; font-weight: 400; margin-left: .2rem; text-transform: none; letter-spacing: 0; }
+.settings-btn { font-size: 11px; font-weight: 600; color: #555; background: #f4f4f0; border: 1px solid #e5e5e5; border-radius: 8px; padding: 3px 8px; cursor: pointer; transition: background .15s; text-transform: none; letter-spacing: 0; line-height: 1.4; }
+.settings-btn:hover { background: #eaeae6; }
+.fold-icon { font-size: 10px; color: #bbb; margin-left: .3rem; }
+
 .people-grid { display: flex; flex-direction: column; gap: .45rem; }
 .person-btn { display: flex; align-items: center; gap: .75rem; width: 100%; padding: .75rem 1rem; border-radius: 12px; border: 1.5px solid #ebebeb; background: #fafafa; cursor: pointer; transition: all .15s; text-align: left; }
 .person-btn:hover { border-color: var(--accent); background: #fff; }
@@ -53,31 +59,16 @@ body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background:
 .person-badge { font-size: 11px; color: #ef4444; background: #fee2e2; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
 .person-close { font-size: 11px; color: #bbb; margin-left: auto; }
 
-/* ── 달력 공통 ── */
-/* ── 달력 공통 ── */
+/* ── 개인 불가 달력 (Flatpickr) ── */
 .fp-hidden { display: none; }
 .fp-hidden + .flatpickr-calendar { display: block !important; }
 
-.cal-card .flatpickr-calendar {
-  box-shadow: none !important;
-  border: none !important;
-  background: transparent !important;
-  width: 100% !important;
-}
-.cal-card .flatpickr-months {
-  margin-bottom: .5rem;
-}
+.cal-card .flatpickr-calendar { box-shadow: none !important; border: none !important; background: transparent !important; width: 100% !important; }
+.cal-card .flatpickr-months { margin-bottom: .5rem; }
 .cal-card .flatpickr-innerContainer,
-.cal-card .flatpickr-rContainer {
-  width: 100% !important;
-}
+.cal-card .flatpickr-rContainer { width: 100% !important; }
 .cal-card .flatpickr-days,
-.cal-card .dayContainer {
-  width: 100% !important;
-  min-width: unset !important;
-  max-width: unset !important;
-}
-/* 날짜 셀: 7등분으로 꽉 채움 */
+.cal-card .dayContainer { width: 100% !important; min-width: unset !important; max-width: unset !important; }
 .cal-card .flatpickr-day {
   flex: 1 1 calc(100% / 7) !important;
   max-width: calc(100% / 7) !important;
@@ -89,20 +80,10 @@ body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background:
   line-height: 38px !important;
   margin: 1px 0 !important;
 }
-.cal-card .flatpickr-day:hover {
-  background: #f4f4f0 !important;
-}
-.cal-card .flatpickr-day.flatpickr-disabled {
-  color: #ddd !important;
-}
-.cal-card .flatpickr-day.selected {
-  background: transparent !important;
-  border: none !important;
-}
-/* 요일 헤더도 7등분 */
-.cal-card .flatpickr-weekdays {
-  width: 100% !important;
-}
+.cal-card .flatpickr-day:hover { background: #f4f4f0 !important; }
+.cal-card .flatpickr-day.flatpickr-disabled { color: #ddd !important; }
+.cal-card .flatpickr-day.selected { background: transparent !important; border: none !important; }
+.cal-card .flatpickr-weekdays { width: 100% !important; }
 .cal-card .flatpickr-weekday {
   flex: 1 1 calc(100% / 7) !important;
   max-width: calc(100% / 7) !important;
@@ -110,122 +91,70 @@ body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background:
   font-weight: 700 !important;
   color: #aaa !important;
 }
-
-/* 일요일 열 (첫 번째) 빨간색 */
-.cal-card .flatpickr-day:nth-child(7n+1) {
-  color: #ef4444 !important;
-}
-/* 토요일 열 (마지막) 파란색 */
-.cal-card .flatpickr-day:nth-child(7n) {
-  color: #3b82f6 !important;
-}
-/* 요일 헤더 일/토 색상 */
+.cal-card .flatpickr-day:nth-child(7n+1) { color: #ef4444 !important; }
+.cal-card .flatpickr-day:nth-child(7n)   { color: #3b82f6 !important; }
 .cal-card .flatpickr-weekday:first-child { color: #ef4444 !important; }
 .cal-card .flatpickr-weekday:last-child  { color: #3b82f6 !important; }
 
 /* 불가 날짜 */
-.fp-blocked {
-  background: #fee2e2 !important;
-  color: #dc2626 !important;
-  border-color: #fca5a5 !important;
-}
-
-/* 결과 달력 색상 */
-.cal-all-free {
-  background: #dcfce7 !important;
-  color: #166534 !important;
-  font-weight: 800 !important;
-}
-.cal-part-free {
-  background: #fef9c3 !important;
-  color: #854d0e !important;
-}
-.cal-all-busy {
-  background: #f4f4f0 !important;
-  color: #ccc !important;
-  text-decoration: line-through;
-}
-
-/* 배지 (인원 수) */
-.cal-badge {
-  position: absolute;
-  right: 2px;
-  bottom: 1px;
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1.4;
-  pointer-events: none;
-  color: inherit;
-}
-
-/* 불가 날짜 */
 .fp-blocked { background: #fee2e2 !important; color: #dc2626 !important; border-color: #fca5a5 !important; }
 
-/* 결과 달력 색상 */
-.cal-all-free { background: #dcfce7 !important; color: #166534 !important; font-weight: 800 !important; }
-.cal-part-free { background: #fef9c3 !important; color: #854d0e !important; }
-.cal-all-busy { background: #f4f4f0 !important; color: #ccc !important; text-decoration: line-through; }
-
-/* 배지 (인원 수) */
-.cal-badge {
-  position: absolute;
-  right: 2px; bottom: 1px;
-  font-size: 9px; font-weight: 700;
-  line-height: 1.4;
-  pointer-events: none;
-  color: inherit;
+/* ── 결과 달력 (커스텀 렌더링) ── */
+.rc-header { text-align: center; font-size: 14px; font-weight: 700; margin-bottom: .5rem; color: #1a1a1a; }
+.rc-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.rc-dow { text-align: center; font-size: 11px; font-weight: 700; color: #aaa; padding: 4px 0; }
+.rc-sun { color: #ef4444 !important; }
+.rc-sat { color: #3b82f6 !important; }
+.rc-cell {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border-radius: 8px;
+  padding: 5px 2px;
+  min-height: 40px;
+  background: #f9f9f7;
 }
+.rc-empty { background: transparent !important; }
+.rc-all-free  { background: #dcfce7 !important; }
+.rc-part-free { background: #fef9c3 !important; }
+.rc-all-busy  { background: #f4f4f0 !important; }
+.rc-num { font-size: 13px; font-weight: 700; color: #1a1a1a; line-height: 1; }
+.rc-red  { color: #ef4444 !important; }
+.rc-blue { color: #3b82f6 !important; }
+.rc-badge { font-size: 9px; font-weight: 700; color: #999; line-height: 1; margin-top: 2px; }
+.rc-all-free  .rc-badge { color: #166534; }
+.rc-part-free .rc-badge { color: #854d0e; }
+.rc-all-busy  .rc-badge { color: #ccc; }
 
 /* ── 범례 ── */
 .legend-row { display: flex; gap: 1rem; margin-top: .9rem; padding-top: .75rem; border-top: 1px solid #f0f0f0; }
 .legend-item { display: flex; align-items: center; gap: .3rem; font-size: 12px; color: #888; }
 .legend-dot { width: 12px; height: 12px; border-radius: 4px; flex-shrink: 0; }
-.legend-green { background: #dcfce7; border: 1px solid #4ade80; }
+.legend-green  { background: #dcfce7; border: 1px solid #4ade80; }
 .legend-yellow { background: #fef9c3; border: 1px solid #fde047; }
-.legend-gray { background: #f4f4f0; border: 1px solid #e5e5e5; }
+.legend-gray   { background: #f4f4f0; border: 1px solid #e5e5e5; }
 
-/* ── 전원 가능 날짜 그리드 ── */
+/* ── 전원 가능 날짜 칩 ── */
 .empty-msg { font-size: 13px; color: #aaa; }
 .free-grid { display: flex; flex-wrap: wrap; gap: .4rem; }
 .free-chip {
-  display: flex; flex-direction: column; align-items: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: #dcfce7; border: 1px solid #86efac;
-  border-radius: 12px; padding: .4rem .65rem;
-  min-width: 48px;
+  border-radius: 12px; padding: .45rem .7rem;
+  min-width: 52px;
 }
 .free-chip--weekend { background: #fee2e2; border-color: #fca5a5; }
 .chip-date { font-size: 13px; font-weight: 700; color: #166534; }
 .free-chip--weekend .chip-date { color: #dc2626; }
-.chip-day { font-size: 10px; color: #4ade80; font-weight: 600; }
+.chip-day { font-size: 10px; color: #4ade80; font-weight: 600; margin-top: 1px; }
 .free-chip--weekend .chip-day { color: #f87171; }
 
-/* ── 참여자 편집 버튼 ── */
-.member-count { font-size: 11px; color: #aaa; font-weight: 400; margin-left: .2rem; text-transform: none; letter-spacing: 0; }
-.settings-btn { margin-left: auto; font-size: 12px; font-weight: 600; color: #555; background: #f4f4f0; border: 1px solid #e5e5e5; border-radius: 8px; padding: 3px 10px; cursor: pointer; transition: background .15s; text-transform: none; letter-spacing: 0; }
-.settings-btn:hover { background: #eaeae6; }
-
-/* ── 모달 오버레이 ── */
-.modal-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,.45);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-.modal {
-  background: #fff;
-  border-radius: 20px;
-  width: 100%; max-width: 400px;
-  padding: 1.5rem;
-  display: flex; flex-direction: column; gap: 1rem;
-  max-height: 90vh; overflow-y: auto;
-}
+/* ── 모달 ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+.modal { background: #fff; border-radius: 20px; width: 100%; max-width: 400px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; max-height: 90vh; overflow-y: auto; }
 .modal-header { display: flex; align-items: center; justify-content: space-between; }
 .modal-title { font-size: 16px; font-weight: 800; }
 .modal-close { background: none; border: none; font-size: 16px; color: #aaa; cursor: pointer; padding: 4px; }
 .modal-hint { font-size: 12px; color: #aaa; margin-top: -.5rem; }
-
-/* 참여자 목록 */
 .modal-list { display: flex; flex-direction: column; gap: .5rem; }
 .modal-row { display: flex; align-items: center; gap: .6rem; }
 .modal-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; }
@@ -234,16 +163,24 @@ body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background:
 .modal-remove { background: none; border: none; color: #ccc; font-size: 14px; cursor: pointer; padding: 4px 6px; border-radius: 6px; transition: color .15s, background .15s; }
 .modal-remove:hover:not(:disabled) { color: #ef4444; background: #fee2e2; }
 .modal-remove:disabled { opacity: .3; cursor: not-allowed; }
-
-/* 추가 버튼 */
 .modal-add-btn { width: 100%; padding: .6rem; border: 1.5px dashed #e5e5e5; border-radius: 12px; background: none; color: #888; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
 .modal-add-btn:hover:not(:disabled) { border-color: #1a1a1a; color: #1a1a1a; background: #fafafa; }
 .modal-add-btn:disabled { opacity: .4; cursor: not-allowed; }
-
-/* 푸터 버튼 */
 .modal-footer { display: flex; gap: .5rem; padding-top: .5rem; border-top: 1px solid #f0f0f0; }
 .modal-cancel { flex: 1; padding: .65rem; border: 1px solid #e5e5e5; border-radius: 12px; background: #fafafa; font-size: 14px; font-weight: 600; color: #888; cursor: pointer; }
 .modal-save { flex: 2; padding: .65rem; border: none; border-radius: 12px; background: #1a1a1a; font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; transition: background .15s; }
 .modal-save:hover { background: #333; }
 
-.fold-icon { margin-left: .3rem; font-size: 10px; color: #bbb; }
+/* ── 기간 표시 배너 ── */
+.range-banner {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: #f0f7ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: .45rem .75rem;
+  margin-bottom: .75rem;
+}
+.range-label { font-size: 11px; font-weight: 700; color: #3b82f6; }
+.range-dates { font-size: 12px; font-weight: 600; color: #1e40af; }
